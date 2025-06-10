@@ -1,5 +1,7 @@
 use crate::websocket::client::CoordsContainer;
-
+use ahrs::{Ahrs, Madgwick};
+use nalgebra::Vector3;
+use std::f64;
 
 pub struct Orientation {
     pub x: f64,
@@ -25,23 +27,49 @@ pub fn start(receiver: crossbeam::channel::Receiver<CoordsContainer>, sender: cr
         y: 0.0,
         z: 0.0,
     };
+    
+    let mut ahrs = Madgwick::default();
 
     loop {
         let coords = receiver.recv().unwrap();
 
-        let orientation_error = calculate_orientation_error(&standby_target, &coords);
+        let gyroscope = Vector3::new(
+            coords.gyroscope.x as f64,
+            coords.gyroscope.y as f64,
+            coords.gyroscope.z as f64,
+        );
+        let accelerometer = Vector3::new(
+            coords.acceleration.x as f64,
+            coords.acceleration.y as f64,
+            coords.acceleration.z as f64,
+        );
+        let magnetometer = Vector3::new(
+            coords.magnetometer.x as f64,
+            coords.magnetometer.y as f64,
+            coords.magnetometer.z as f64,
+        );
+        
+        let quat = ahrs.update(
+            &(gyroscope * (f64::consts::PI / 180.0)),
+            &accelerometer,
+            &magnetometer,
+        ).unwrap();
+
+        let (roll, pitch, yaw) = quat.euler_angles();
+
+        let orientation_error = calculate_orientation_error(&standby_target, roll, pitch, yaw);
 
         let pd = PDController {
-            kp: 1.5, // Adjust as needed
-            kd: 0.3, // Adjust as needed
+            kp: 600000.0, // Adjust as needed this is the proportional gain
+            kd: 1000000.0, // Adjust as needed ths is the derivative gain
         };
 
         let correction_x = pd_control(&pd, orientation_error.x, coords.gyroscope.x);
         let correction_y = pd_control(&pd, orientation_error.y, coords.gyroscope.y);
         let correction_z = pd_control(&pd, orientation_error.z, coords.gyroscope.z); 
 
-        let base_thrust: f64 = 40.0; // Base thrust value, adjust as needed. This is Newton's second law of motion.
-        let max_thrust: f64 = 70.0; // Maximum thrust value for motors, adjust as needed.
+        let base_thrust: f64 = 70.0; // Base thrust value, adjust as needed. This is Newton's second law of motion.
+        let max_thrust: f64 = 150.0; // Maximum thrust value for motors, adjust as needed.
 
         let motors = mix_motor_forces(base_thrust, correction_x, correction_y, correction_z);
 
@@ -78,12 +106,14 @@ pub fn clamp_motor_force(force: f64, min: f64, max: f64) -> f64 {
 
 pub fn calculate_orientation_error(
     target: &Orientation,
-    current: &CoordsContainer,
+    roll: f64,
+    pitch: f64,
+    yaw: f64,
 ) -> Orientation {
     Orientation {
-        x: normalize_angle(target.x - current.gyroscope.x),
-        y: normalize_angle(target.y - current.gyroscope.y),
-        z: normalize_angle(target.z - current.gyroscope.z),
+        x: target.x - roll,
+        y: target.y - pitch,
+        z: target.z - yaw,
     }
 }
 
