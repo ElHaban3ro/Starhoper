@@ -6,7 +6,7 @@ import websockets
 from websockets.asyncio.server import serve
 
 from maps import Coords, IMU
-from modules import profiles
+from modules import profiles, sequences
 from modules.alarms import Alarms
 from modules.config_runtime import current as cfg
 from modules.config_schema import SCHEMA
@@ -15,6 +15,7 @@ from modules.landing import Landing
 from modules.log_buffer import install_tee
 from modules.pilot import PilotInput
 from modules.recorder import Recorder
+from modules.sequencer import Sequencer
 from modules.stabilization import Stabilization
 from modules.step_tester import StepTester
 
@@ -34,6 +35,7 @@ class Controller:
         self.alarms = Alarms()
         self.step_tester = StepTester()
         self.landing = Landing()
+        self.sequencer = Sequencer()
 
         self.dashboard = DashboardServer(command_handler=self._handle_command)
 
@@ -74,8 +76,49 @@ class Controller:
                     pitch_sp = self.step_tester.pitch_setpoint()
                     roll_sp = self.step_tester.roll_setpoint()
 
-                # Auto-landing override (backend state machine).
                 throttle = self.pilot.throttle
+                yaw_input = self.pilot.yaw_input
+
+                # Sequencer (runs before landing so it can trigger it).
+                seq_cmd = self.sequencer.update(
+                    landing_state=self.landing.state,
+                    current_yaw_deg=float(imu_data.euler_angles.vector[2]),
+                    sonars=sonars,
+                )
+                if seq_cmd:
+                    if seq_cmd.get("trigger_arm"):
+                        if not self.stabilization.armed:
+                            self.stabilization.armed = True
+                            self.stabilization.reset()
+                            self.dashboard.broadcast(
+                                {"type": "armed_state", "armed": True}
+                            )
+                    if seq_cmd.get("force_disarm") and self.stabilization.armed:
+                        self.landing.cancel()
+                        self.stabilization.armed = False
+                        self.dashboard.broadcast(
+                            {"type": "armed_state", "armed": False}
+                        )
+                    if seq_cmd.get("trigger_landing") and not self.landing.active:
+                        self.stabilization.armed = True
+                        self.stabilization.reset()
+                        self.landing.start()
+                        self.dashboard.broadcast(
+                            {"type": "armed_state", "armed": True}
+                        )
+                        self.dashboard.broadcast(
+                            {"type": "landing_state", **self.landing.snapshot()}
+                        )
+                    if "throttle" in seq_cmd:
+                        throttle = seq_cmd["throttle"]
+                    if "pitch_sp" in seq_cmd:
+                        pitch_sp = seq_cmd["pitch_sp"]
+                    if "roll_sp" in seq_cmd:
+                        roll_sp = seq_cmd["roll_sp"]
+                    if "yaw_input" in seq_cmd:
+                        yaw_input = seq_cmd["yaw_input"]
+
+                # Auto-landing override (backend state machine).
                 land_cmd = self.landing.update(sonars)
                 force_motors_min = False
                 if land_cmd:
@@ -94,7 +137,7 @@ class Controller:
 
                 force = self.stabilization.update_orientation(
                     imu_data, throttle, tilt,
-                    pitch_sp, roll_sp, self.pilot.yaw_input,
+                    pitch_sp, roll_sp, yaw_input,
                 )
                 if force_motors_min:
                     from modules.config_runtime import current as _cfg
@@ -169,6 +212,7 @@ class Controller:
             "failsafe": st.last_failsafe,
             "armed": st.armed,
             "landing": self.landing.snapshot(),
+            "sequencer": self.sequencer.snapshot(),
             "connected_unity": True,
             "recording": self.recorder.active,
             "recording_file": self.recorder.filename,
@@ -184,10 +228,12 @@ class Controller:
                 "schema": SCHEMA,
                 "config": cfg.to_dict(),
                 "profiles": profiles.list_profiles(),
+                "sequences": sequences.list_sequences(),
                 "alarm_rules": self.alarms.rules_snapshot(),
                 "active_alarms": self.alarms.snapshot(),
                 "armed": self.stabilization.armed,
                 "recording": self.recorder.active,
+                "sequencer": self.sequencer.snapshot(),
             }
         if t == "set_param":
             key = msg["key"]
@@ -270,6 +316,64 @@ class Controller:
         if t == "cancel_landing":
             self.landing.cancel()
             return {"type": "landing_state", **self.landing.snapshot()}
+        if t == "list_sequences":
+            return {"type": "sequence_list",
+                    "sequences": sequences.list_sequences()}
+        if t == "save_sequence":
+            name = msg["name"]
+            raw_stages = msg.get("stages", [])
+            clean = sequences.sanitize_stages(raw_stages)
+            sequences.save(name, clean)
+            # Keep in-memory sequencer in sync so subsequent hello/refresh
+            # returns the same stages the user just persisted.
+            self.sequencer.load(clean)
+            return {"type": "sequence_saved",
+                    "name": name,
+                    "stages": clean,
+                    "sequences": sequences.list_sequences()}
+        if t == "load_sequence":
+            data = sequences.load(msg["name"])
+            self.sequencer.load(data.get("stages", []))
+            return {"type": "sequence_loaded",
+                    "name": data.get("name"),
+                    "stages": data.get("stages", [])}
+        if t == "set_sequence":
+            # Set current in-memory stages without saving to disk.
+            # Ack-only: don't echo snapshot (would steal input focus on
+            # every keystroke in the dashboard sequencer editor).
+            self.sequencer.load(
+                sequences.sanitize_stages(msg.get("stages", []))
+            )
+            return None
+        if t == "delete_sequence":
+            sequences.delete(msg["name"])
+            return {"type": "sequence_list",
+                    "sequences": sequences.list_sequences()}
+        if t == "run_sequence":
+            # Optionally accept a fresh stage list in the same message.
+            if "stages" in msg:
+                self.sequencer.load(sequences.sanitize_stages(msg["stages"]))
+            # Loop toggle.
+            self.sequencer.loop = bool(msg.get("loop", False))
+            # Auto-arm so throttle/attitude stages actually reach the motors.
+            if not self.stabilization.armed:
+                self.stabilization.armed = True
+                self.stabilization.reset()
+                self.dashboard.broadcast(
+                    {"type": "armed_state", "armed": True}
+                )
+            self.sequencer.start()
+            return {"type": "sequencer_state", **self.sequencer.snapshot()}
+        if t == "stop_sequence":
+            self.sequencer.cancel()
+            # Stop is a safety action — disarm so motors go dead immediately.
+            if self.stabilization.armed:
+                self.landing.cancel()
+                self.stabilization.armed = False
+                self.dashboard.broadcast(
+                    {"type": "armed_state", "armed": False}
+                )
+            return {"type": "sequencer_state", **self.sequencer.snapshot()}
         if t == "get_log":
             from modules.log_buffer import log_buffer
             return {"type": "log_snapshot", "lines": log_buffer.snapshot()}
@@ -280,6 +384,7 @@ class Controller:
     async def run(self):
         profiles.ensure_dir()
         profiles.bootstrap_presets()
+        sequences.ensure_dir()
         # Pilot input now comes exclusively from the dashboard UI over WS.
         await asyncio.gather(
             self._unity_server(),

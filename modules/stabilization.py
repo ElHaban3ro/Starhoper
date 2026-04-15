@@ -31,7 +31,9 @@ class Stabilization:
         self._last_t = None
 
         # Armed flag for emergency stop. When False, motors forced to 0.
-        self.armed = True
+        # Always boot disarmed — operator must explicitly ARM or trigger
+        # a sequence/landing that auto-arms.
+        self.armed = False
 
         # Telemetry snapshots (consumed by dashboard).
         self.last_error = np.zeros(3)

@@ -1,0 +1,61 @@
+{
+  "name": "LaunchTest2",
+  "stages": [
+    {
+      "type": "arm"
+    },
+    {
+      "type": "throttle",
+      "duration_s": 5.0,
+      "value": 0.18,
+      "pitch_deg": 0.0,
+      "roll_deg": 0.0,
+      "direction": "N"
+    },
+    {
+      "type": "throttle",
+      "duration_s": 23.0,
+      "value": 0.15,
+      "pitch_deg": 40.0,
+      "roll_deg": 0.0,
+      "direction": ""
+    },
+    {
+      "type": "landing",
+      "direction": "",
+      "controlled": true,
+      "pitch_deg": 0.0,
+      "roll_deg": 0.0
+    },
+    {
+      "type": "wait",
+      "duration_s": 5.0
+    },
+    {
+      "type": "arm"
+    },
+    {
+      "type": "throttle",
+      "duration_s": 5.0,
+      "value": 0.15,
+      "pitch_deg": 0.0,
+      "roll_deg": 0.0,
+      "direction": "S"
+    },
+    {
+      "type": "throttle",
+      "duration_s": 23.0,
+      "value": 0.15,
+      "pitch_deg": 40.0,
+      "roll_deg": 0.0,
+      "direction": "S"
+    },
+    {
+      "type": "landing",
+      "direction": "N",
+      "controlled": true,
+      "pitch_deg": 0.0,
+      "roll_deg": 0.0
+    }
+  ]
+}

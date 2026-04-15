@@ -9,6 +9,7 @@ import { renderAlarmRules, renderActiveAlarms, applyAlarmEvent, setAllActiveAlar
 import { appendLog, replayLog } from './log.js';
 import { handleStepResult } from './steptest.js';
 import { initPilot } from './pilot.js';
+import { bindSequencer, setSequenceList, setStages, updateRunState } from './sequencer.js';
 
 const wsUrl = `ws://${location.hostname || 'localhost'}:3031`;
 let ws = null;
@@ -55,6 +56,10 @@ function route(msg){
       setAllActiveAlarms(msg.active_alarms || []);
       setArmed(msg.armed);
       setRecording(msg.recording, null);
+      setSequenceList(msg.sequences || []);
+      if (msg.sequencer && Array.isArray(msg.sequencer.stages)) {
+        setStages(msg.sequencer.stages);
+      }
       break;
     case 'telemetry':
       onTelemetry(msg);
@@ -93,6 +98,22 @@ function route(msg){
     case 'step_result':
       handleStepResult(msg);
       break;
+    case 'sequence_list':
+      setSequenceList(msg.sequences || []);
+      break;
+    case 'sequence_loaded':
+      setStages(msg.stages || []);
+      break;
+    case 'sequence_saved':
+      if (Array.isArray(msg.sequences)) setSequenceList(msg.sequences);
+      setStages(msg.stages || []);
+      break;
+    case 'sequencer_state':
+      // Don't re-render stages here: server echoes on every keystroke
+      // during set_sequence and would steal focus from the input.
+      // Stages only refresh on hello / sequence_loaded.
+      updateRunState(msg);
+      break;
     case 'log':
       appendLog(msg.line);
       break;
@@ -127,6 +148,7 @@ function onTelemetry(t){
   pushTelemetry(t);
   updateVelocity(t);
   setReadout(t);
+  if (t.sequencer) updateRunState(t.sequencer);
 }
 
 function setReadout(t){
@@ -188,5 +210,6 @@ initVelocity(document.getElementById('velocity-canvas'));
 initPilot(send);
 bindControls(send);
 bindProfileButtons(send, () => lastConfig);
+bindSequencer(send);
 
 connect();

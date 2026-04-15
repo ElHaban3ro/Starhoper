@@ -59,6 +59,24 @@ header{position:sticky;top:0;z-index:100;display:flex;flex-direction:column;gap:
 .card.controls{grid-column:span 6}
 .card.alarms{grid-column:span 6}
 .card.logs{grid-column:span 6}
+.card.sequencer{grid-column:span 12}
+
+/* Sequencer */
+.seq-progress{height:4px;background:var(--panel-2);border-radius:2px;margin:8px 0;overflow:hidden}
+.seq-progress-fill{height:100%;background:var(--accent);width:0%;transition:width 0.1s linear}
+#seq-stages{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.seq-row{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel-2);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:grab}
+.seq-row.dragging{opacity:0.5}
+.seq-row.drop-target{border-color:var(--accent);background:rgba(120,180,255,0.08)}
+.seq-row.running{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.seq-handle{color:var(--muted);font-weight:bold;cursor:grab;user-select:none}
+.seq-idx{color:var(--muted);font-variant-numeric:tabular-nums;min-width:24px;text-align:right}
+.seq-type{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:12px}
+.seq-params{display:flex;gap:8px;flex:1;flex-wrap:wrap}
+.seq-param{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:11px}
+.seq-param input{width:68px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-variant-numeric:tabular-nums}
+.seq-del{background:transparent;color:var(--muted);border:0;cursor:pointer;padding:2px 6px;border-radius:4px}
+.seq-del:hover{background:var(--danger);color:#fff}
 
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .row:last-child{margin-bottom:0}

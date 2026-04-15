@@ -184,6 +184,43 @@
     <div id="step-result" class="muted"></div>
   </section>
 
+  <section class="card sequencer">
+    <h2>Sequencer</h2>
+    <div class="row">
+      <label>Saved:
+        <select id="seq-select"></select>
+      </label>
+      <button id="btn-seq-load">Load</button>
+      <button id="btn-seq-save">Save as…</button>
+      <button id="btn-seq-delete" class="danger">Delete</button>
+    </div>
+    <div class="row">
+      <button id="btn-seq-run" class="primary">▶ Run</button>
+      <button id="btn-seq-stop" class="danger">■ Stop</button>
+      <label class="seq-loop-lbl"><input type="checkbox" id="seq-loop"> Loop</label>
+      <span id="seq-status" class="muted">idle</span>
+    </div>
+    <div class="seq-progress">
+      <div id="seq-progress-bar" class="seq-progress-fill"></div>
+    </div>
+    <h3>Stages <small class="muted">(drag to reorder)</small></h3>
+    <div id="seq-stages"></div>
+    <div class="row">
+      <label>Add stage:
+        <select id="seq-add-type">
+          <option value="throttle">throttle</option>
+          <option value="attitude">attitude</option>
+          <option value="heading">heading</option>
+          <option value="wait">wait</option>
+          <option value="arm">arm</option>
+          <option value="disarm">disarm</option>
+          <option value="landing">landing</option>
+        </select>
+      </label>
+      <button id="btn-seq-add">+ Add</button>
+    </div>
+  </section>
+
   <section class="card alarms">
     <h2>Alarms</h2>
     <div id="alarm-rules"></div>
