@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 8% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 8% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 174 72% 56%;
+    --primary-foreground: 180 100% 6%;
+    --secondary: 240 4% 15%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 15%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 15%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --warning: 38 92% 58%;
+    --success: 142 60% 58%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 174 72% 56%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html, body, #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'ss01' 1;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+    border: 2px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* uPlot dark-theme overrides (library ships assuming light bg) */
+.uplot,
+.uplot *,
+.uplot *:before,
+.uplot *:after {
+  box-sizing: border-box;
+}
+.u-title,
+.u-value,
+.u-label,
+.u-legend {
+  color: hsl(var(--foreground)) !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+  font-size: 11px !important;
+}
+.u-legend {
+  padding: 4px 0 0;
+  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.u-legend .u-series {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.u-legend .u-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 0 !important;
+}
+.u-legend th {
+  font-weight: 500;
+  color: hsl(var(--muted-foreground)) !important;
+}
+.u-select {
+  background: hsl(var(--primary) / 0.12) !important;
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+.u-cursor-x,
+.u-cursor-y {
+  background: hsl(var(--primary)) !important;
+  opacity: 0.5;
+}
+.u-cursor-pt {
+  border-color: hsl(var(--primary)) !important;
+  background: hsl(var(--background)) !important;
+}

@@ -22,7 +22,7 @@ from websockets.asyncio.server import serve as ws_serve
 from modules.log_buffer import log_buffer
 
 
-DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard"
+DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard" / "dist"
 
 
 class DashboardServer:
@@ -35,11 +35,14 @@ class DashboardServer:
 
     # ---------- lifecycle ----------
 
-    async def run(self, ws_port: int = 3031, http_port: int = 3032):
+    async def run(self, ws_port: int = 3031, http_port: int | None = 3032):
         self._loop = asyncio.get_running_loop()
-        ws_task = asyncio.create_task(self._run_ws(ws_port))
-        http_task = asyncio.create_task(self._run_http(http_port))
-        await asyncio.gather(ws_task, http_task)
+        tasks = [asyncio.create_task(self._run_ws(ws_port))]
+        if http_port is not None:
+            tasks.append(asyncio.create_task(self._run_http(http_port)))
+        else:
+            print("Dashboard HTTP skipped (dev mode — served by Vite).")
+        await asyncio.gather(*tasks)
 
     async def _run_ws(self, port: int):
         async with ws_serve(self._handler, "0.0.0.0", port):
@@ -133,12 +136,22 @@ class DashboardServer:
 
 def _mime_for(ext: str) -> str:
     return {
-        ".html": "text/html; charset=utf-8",
-        ".css":  "text/css; charset=utf-8",
-        ".js":   "application/javascript; charset=utf-8",
-        ".json": "application/json; charset=utf-8",
-        ".png":  "image/png",
-        ".svg":  "image/svg+xml",
+        ".html":  "text/html; charset=utf-8",
+        ".css":   "text/css; charset=utf-8",
+        ".js":    "application/javascript; charset=utf-8",
+        ".mjs":   "application/javascript; charset=utf-8",
+        ".json":  "application/json; charset=utf-8",
+        ".png":   "image/png",
+        ".jpg":   "image/jpeg",
+        ".jpeg":  "image/jpeg",
+        ".webp":  "image/webp",
+        ".svg":   "image/svg+xml",
+        ".ico":   "image/x-icon",
+        ".woff":  "font/woff",
+        ".woff2": "font/woff2",
+        ".ttf":   "font/ttf",
+        ".map":   "application/json; charset=utf-8",
+        ".txt":   "text/plain; charset=utf-8",
     }.get(ext.lower(), "application/octet-stream")
 
 

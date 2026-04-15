@@ -1,6 +1,12 @@
+import argparse
 import asyncio
 import json
+import os
+import shutil
+import signal
+import subprocess
 import time
+from pathlib import Path
 
 import websockets
 from websockets.asyncio.server import serve
@@ -24,7 +30,8 @@ class Controller:
     """Orchestrates Unity ws + dashboard ws/http + telemetry broadcast."""
 
     def __init__(self, unity_port: int = 3030,
-                 dash_ws_port: int = 3031, dash_http_port: int = 3032):
+                 dash_ws_port: int = 3031,
+                 dash_http_port: int | None = 3032):
         self.unity_port = unity_port
         self.dash_ws_port = dash_ws_port
         self.dash_http_port = dash_http_port
@@ -392,13 +399,75 @@ class Controller:
         )
 
 
+def _spawn_vite_dev() -> subprocess.Popen | None:
+    """Spawn `npm run dev` inside dashboard/ and return the process.
+
+    Stdout/stderr are inherited so Vite logs interleave with main.py output.
+    Returns None if npm is unavailable or dashboard dir is missing.
+    """
+    dash_dir = Path(__file__).resolve().parent / "dashboard"
+    if not (dash_dir / "package.json").is_file():
+        print(f"[dev] {dash_dir}/package.json not found — cannot start Vite.")
+        return None
+    npm = shutil.which("npm")
+    if npm is None:
+        print("[dev] npm not found on PATH — cannot start Vite.")
+        return None
+    # Auto-install if node_modules is missing.
+    if not (dash_dir / "node_modules").is_dir():
+        print("[dev] installing dashboard deps (first run)…")
+        subprocess.run([npm, "install"], cwd=dash_dir, check=True)
+    print("[dev] starting Vite dev server (npm run dev)…")
+    # New session so we can kill the whole process group on shutdown.
+    popen_kwargs = {"cwd": str(dash_dir)}
+    if os.name == "posix":
+        popen_kwargs["start_new_session"] = True
+    return subprocess.Popen([npm, "run", "dev"], **popen_kwargs)
+
+
+def _kill_vite(proc: subprocess.Popen) -> None:
+    if proc.poll() is not None:
+        return
+    try:
+        if os.name == "posix":
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        else:
+            proc.terminate()
+        proc.wait(timeout=5)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+
+
 def main():
+    parser = argparse.ArgumentParser(description="StarHoper controller")
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Also spawn the dashboard Vite dev server (http://localhost:5173).",
+    )
+    args = parser.parse_args()
+
     install_tee()
-    controller = Controller()
+
+    vite_proc: subprocess.Popen | None = None
+    dash_http_port: int | None = 3032
+    if args.dev:
+        vite_proc = _spawn_vite_dev()
+        if vite_proc:
+            dash_http_port = None  # free :3032 for Vite
+            print("[dev] dashboard → http://localhost:3032  (WS on :3031)")
+
+    controller = Controller(dash_http_port=dash_http_port)
     try:
         asyncio.run(controller.run())
     except KeyboardInterrupt:
         print('shutting down.')
+    finally:
+        if vite_proc is not None:
+            _kill_vite(vite_proc)
 
 
 if __name__ == "__main__":
