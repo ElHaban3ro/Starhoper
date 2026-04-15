@@ -178,3 +178,27 @@ PASSIVE = False
 # If True, print euler / gyro / err / u every PID tick. Useful for sign
 # diagnosis but pollutes the console.
 DEBUG = False
+
+
+# ============================================================================
+# AUTO-LANDING
+# ============================================================================
+
+# Altitude (real meters from sonar) at which the auto-landing sequence
+# transitions from free-fall (DESCENT, motors at MOTOR_MIN) into active
+# braking (APPROACH, throttle held at LANDING_THROTTLE, attitude leveled).
+LANDING_APPROACH_ALT_M = 2.0
+
+# Altitude (real meters) at which APPROACH transitions to TOUCHDOWN and the
+# motors are disarmed. Set close to leg height so the rocket settles softly.
+LANDING_TOUCHDOWN_ALT_M = 0.17
+
+# Throttle command (range [-1, 1]) held during APPROACH. Slightly negative
+# so the drone descends gently against base-thrust hover.
+LANDING_THROTTLE = -0.15
+
+# Hard timeout (seconds) for APPROACH. If sonar never reports touchdown
+# within this window, the sequence force-disarms — guards against stuck
+# sensors or surface that never returns a clean echo.
+LANDING_APPROACH_TIMEOUT_S = 30.0
+

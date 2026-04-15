@@ -129,6 +129,24 @@ SCHEMA = [
      "label": "Pitch sign",
      "tooltip": "+1 or -1 to correct axis convention."},
 
+    # AUTO-LANDING
+    {"key": "LANDING_APPROACH_ALT_M", "section": "Landing", "type": "float",
+     "min": 0.5, "max": 20.0, "step": 0.1,
+     "label": "Approach altitude (m)",
+     "tooltip": "Sonar height at which DESCENT switches to APPROACH (active braking)."},
+    {"key": "LANDING_TOUCHDOWN_ALT_M", "section": "Landing", "type": "float",
+     "min": 0.01, "max": 1.0, "step": 0.01,
+     "label": "Touchdown altitude (m)",
+     "tooltip": "Sonar height at which APPROACH disarms motors. Set near leg base height."},
+    {"key": "LANDING_THROTTLE", "section": "Landing", "type": "float",
+     "min": -1.0, "max": 0.0, "step": 0.01,
+     "label": "Landing throttle",
+     "tooltip": "Throttle held during APPROACH. Negative = gentle descent."},
+    {"key": "LANDING_APPROACH_TIMEOUT_S", "section": "Landing", "type": "float",
+     "min": 1.0, "max": 120.0, "step": 1.0,
+     "label": "Approach timeout (s)",
+     "tooltip": "Force-disarm if APPROACH never completes within this window."},
+
     # DIAGNOSTICS
     {"key": "PASSIVE", "section": "Diagnostics", "type": "bool",
      "label": "Passive mode",

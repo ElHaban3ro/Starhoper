@@ -42,6 +42,10 @@
     "FAILSAFE_TILT_DEG": 60.0,
     "SIGN_ROLL": -1,
     "SIGN_PITCH": 1,
+    "LANDING_APPROACH_ALT_M": 5.0,
+    "LANDING_TOUCHDOWN_ALT_M": 0.17,
+    "LANDING_THROTTLE": -0.15,
+    "LANDING_APPROACH_TIMEOUT_S": 30.0,
     "PASSIVE": false,
     "DEBUG": false
   }

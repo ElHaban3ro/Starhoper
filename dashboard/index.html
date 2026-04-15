@@ -16,16 +16,31 @@
 <body>
 
 <header>
-  <div class="brand">
-    <span class="logo">▲</span>
-    <span>StarHoper <b>Mission Control</b></span>
+  <div class="header-top">
+    <div class="brand">
+      <span class="logo">▲</span>
+      <span>StarHoper <b>Mission Control</b></span>
+    </div>
+    <div class="status-row">
+      <span id="chip-dash" class="chip">● Dashboard</span>
+      <span id="chip-unity" class="chip">● Unity</span>
+      <span id="chip-armed" class="chip ok">● Armed</span>
+      <span id="chip-failsafe" class="chip hidden">⚠ FAILSAFE</span>
+      <span id="chip-rec" class="chip hidden">⏺ REC</span>
+      <span id="chip-landing" class="chip hidden">⬇ LANDING</span>
+    </div>
   </div>
-  <div class="status-row">
-    <span id="chip-dash" class="chip">● Dashboard</span>
-    <span id="chip-unity" class="chip">● Unity</span>
-    <span id="chip-armed" class="chip ok">● Armed</span>
-    <span id="chip-failsafe" class="chip hidden">⚠ FAILSAFE</span>
-    <span id="chip-rec" class="chip hidden">⏺ REC</span>
+  <div class="telemetry-row">
+    <span class="tchip">Roll <b id="hd-roll">0</b>°</span>
+    <span class="tchip">Pitch <b id="hd-pitch">0</b>°</span>
+    <span class="tchip">Yaw <b id="hd-yaw">0</b>°</span>
+    <span class="tchip">Tilt <b id="hd-tilt">0</b>°</span>
+    <span class="tchip">Down <b id="hd-down">—</b></span>
+    <span class="tchip">Front <b id="hd-front">—</b></span>
+    <span class="tchip">Back <b id="hd-back">—</b></span>
+    <span class="tchip">Left <b id="hd-left">—</b></span>
+    <span class="tchip">Right <b id="hd-right">—</b></span>
+    <span class="tchip">Throttle <b id="hd-thr">0</b>%</span>
   </div>
 </header>
 
@@ -92,6 +107,17 @@
     </div>
   </section>
 
+  <section class="card proximity">
+    <h2>Proximity (sonars)</h2>
+    <div class="sonar-grid">
+      <div class="sonar-cell"><span class="lbl">Down</span>  <b id="sn-down">—</b> <small id="ss-down" class="muted">init</small></div>
+      <div class="sonar-cell"><span class="lbl">Front</span> <b id="sn-front">—</b> <small id="ss-front" class="muted">init</small></div>
+      <div class="sonar-cell"><span class="lbl">Back</span>  <b id="sn-back">—</b> <small id="ss-back" class="muted">init</small></div>
+      <div class="sonar-cell"><span class="lbl">Left</span>  <b id="sn-left">—</b> <small id="ss-left" class="muted">init</small></div>
+      <div class="sonar-cell"><span class="lbl">Right</span> <b id="sn-right">—</b> <small id="ss-right" class="muted">init</small></div>
+    </div>
+  </section>
+
   <section class="card charts">
     <h2>Attitude time-series</h2>
     <canvas id="chart-attitude" width="640" height="180"></canvas>
@@ -133,8 +159,14 @@
     <h2>Controls</h2>
     <div class="row">
       <button id="btn-arm" class="primary">ARM</button>
+      <button id="btn-disarm">DISARM</button>
       <button id="btn-stop" class="danger">EMERGENCY STOP</button>
       <button id="btn-reset-i">RESET INTEGRAL</button>
+    </div>
+    <div class="row">
+      <button id="btn-land" class="primary">LAND</button>
+      <button id="btn-cancel-land">CANCEL LAND</button>
+      <span id="landing-state" class="muted">idle</span>
     </div>
     <div class="row">
       <button id="btn-rec" class="rec">● REC</button>

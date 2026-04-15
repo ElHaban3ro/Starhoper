@@ -11,6 +11,7 @@ from modules.alarms import Alarms
 from modules.config_runtime import current as cfg
 from modules.config_schema import SCHEMA
 from modules.dashboard_server import DashboardServer
+from modules.landing import Landing
 from modules.log_buffer import install_tee
 from modules.pilot import PilotInput
 from modules.recorder import Recorder
@@ -32,6 +33,7 @@ class Controller:
         self.recorder = Recorder()
         self.alarms = Alarms()
         self.step_tester = StepTester()
+        self.landing = Landing()
 
         self.dashboard = DashboardServer(command_handler=self._handle_command)
 
@@ -54,6 +56,16 @@ class Controller:
                     magnetic_field=Coords(**msg['magnet'])
                 )
                 tilt = float(msg.get('tilt', 0.0))
+                sonars_raw = msg.get('sonars') or {}
+                sonars = {}
+                for k in ('down', 'front', 'back', 'left', 'right'):
+                    s = sonars_raw.get(k) or {}
+                    r = s.get('reading') or {}
+                    sonars[k] = {
+                        "distance": float(r.get('distance', -1.0)),
+                        "valid": bool(r.get('valid', False)),
+                        "status": str(r.get('status', 'init')),
+                    }
 
                 # Step tester may override setpoints.
                 pitch_sp = self.pilot.pitch_setpoint
@@ -62,10 +74,31 @@ class Controller:
                     pitch_sp = self.step_tester.pitch_setpoint()
                     roll_sp = self.step_tester.roll_setpoint()
 
+                # Auto-landing override (backend state machine).
+                throttle = self.pilot.throttle
+                land_cmd = self.landing.update(sonars)
+                force_motors_min = False
+                if land_cmd:
+                    if land_cmd.get("force_disarm") and self.stabilization.armed:
+                        self.stabilization.armed = False
+                        self.dashboard.broadcast(
+                            {"type": "armed_state", "armed": False}
+                        )
+                        self.dashboard.broadcast(
+                            {"type": "landing_state", **self.landing.snapshot()}
+                        )
+                    throttle = land_cmd.get("throttle", throttle)
+                    pitch_sp = land_cmd.get("pitch_sp", pitch_sp)
+                    roll_sp = land_cmd.get("roll_sp", roll_sp)
+                    force_motors_min = land_cmd.get("force_motors_min", False)
+
                 force = self.stabilization.update_orientation(
-                    imu_data, self.pilot.throttle, tilt,
+                    imu_data, throttle, tilt,
                     pitch_sp, roll_sp, self.pilot.yaw_input,
                 )
+                if force_motors_min:
+                    from modules.config_runtime import current as _cfg
+                    force = {k: float(_cfg.MOTOR_MIN) for k in ('m1', 'm2', 'm3', 'm4')}
                 await websocket.send(json.dumps(force))
 
                 # Step tester captures response; may finish and emit result.
@@ -78,7 +111,7 @@ class Controller:
                     )
 
                 # Telemetry snapshot.
-                snap = self._snapshot(imu_data, tilt, force, pitch_sp, roll_sp)
+                snap = self._snapshot(imu_data, tilt, force, pitch_sp, roll_sp, sonars)
                 self._last_telemetry = snap
                 self.dashboard.broadcast(snap)
 
@@ -105,7 +138,7 @@ class Controller:
     # ---------- telemetry snapshot ----------
 
     def _snapshot(self, imu_data: IMU, tilt: float, force: dict,
-                  pitch_sp: float, roll_sp: float) -> dict:
+                  pitch_sp: float, roll_sp: float, sonars: dict) -> dict:
         st = self.stabilization
         return {
             "type": "telemetry",
@@ -114,6 +147,8 @@ class Controller:
             "gyro": list(imu_data.angular_velocity.vector),
             "accel": list(imu_data.acceleration.vector),
             "tilt": tilt,
+            "sonar": sonars['down'],
+            "sonars": sonars,
             "motors": {
                 **force,
                 "sat": st.motor_saturated(),
@@ -133,6 +168,7 @@ class Controller:
             },
             "failsafe": st.last_failsafe,
             "armed": st.armed,
+            "landing": self.landing.snapshot(),
             "connected_unity": True,
             "recording": self.recorder.active,
             "recording_file": self.recorder.filename,
@@ -177,10 +213,12 @@ class Controller:
             profiles.delete(msg["name"])
             return {"type": "profile_list",
                     "profiles": profiles.list_profiles()}
-        if t == "emergency_stop":
+        if t == "emergency_stop" or t == "disarm":
+            self.landing.cancel()
             self.stabilization.armed = False
             return {"type": "armed_state", "armed": False}
         if t == "arm":
+            self.landing.cancel()
             self.stabilization.armed = True
             self.stabilization.reset()
             return {"type": "armed_state", "armed": True}
@@ -221,6 +259,17 @@ class Controller:
             )
             return {"type": "alarm_rules",
                     "rules": self.alarms.rules_snapshot()}
+        if t == "start_landing":
+            # Auto-arm so motors can fire during APPROACH. Otherwise a
+            # disarmed/e-stopped drone would free-fall without braking.
+            self.stabilization.armed = True
+            self.stabilization.reset()
+            self.landing.start()
+            self.dashboard.broadcast({"type": "armed_state", "armed": True})
+            return {"type": "landing_state", **self.landing.snapshot()}
+        if t == "cancel_landing":
+            self.landing.cancel()
+            return {"type": "landing_state", **self.landing.snapshot()}
         if t == "get_log":
             from modules.log_buffer import log_buffer
             return {"type": "log_snapshot", "lines": log_buffer.snapshot()}

@@ -9,6 +9,8 @@ let sendFn = null;
 let pending = new Map();  // key -> timeout id
 const widgets = new Map();  // key -> {el, refresh(val)}
 
+const ACTIVE_TAB_KEY = 'paramsActiveTab';
+
 export function renderParams(schema, config, send){
   sendFn = send;
   const root = document.getElementById('params-body');
@@ -21,17 +23,46 @@ export function renderParams(schema, config, send){
     (sections[s] = sections[s] || []).push(entry);
   }
 
-  for(const [name, entries] of Object.entries(sections)){
-    const sec = document.createElement('div');
-    sec.className = 'param-section';
-    const h = document.createElement('h3');
-    h.textContent = name;
-    sec.appendChild(h);
-    for(const e of entries){
-      sec.appendChild(renderOne(e, config[e.key]));
+  const tabBar = document.createElement('div');
+  tabBar.className = 'param-tabs';
+  const panes = document.createElement('div');
+  panes.className = 'param-panes';
+
+  const names = Object.keys(sections);
+  const remembered = localStorage.getItem(ACTIVE_TAB_KEY);
+  const initial = names.includes(remembered) ? remembered : names[0];
+
+  for(const name of names){
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'param-tab';
+    tab.dataset.tab = name;
+    tab.textContent = name;
+    tab.addEventListener('click', () => activate(name));
+    tabBar.appendChild(tab);
+
+    const pane = document.createElement('div');
+    pane.className = 'param-pane';
+    pane.dataset.tab = name;
+    for(const e of sections[name]){
+      pane.appendChild(renderOne(e, config[e.key]));
     }
-    root.appendChild(sec);
+    panes.appendChild(pane);
   }
+
+  function activate(name){
+    localStorage.setItem(ACTIVE_TAB_KEY, name);
+    tabBar.querySelectorAll('.param-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === name);
+    });
+    panes.querySelectorAll('.param-pane').forEach(p => {
+      p.classList.toggle('active', p.dataset.tab === name);
+    });
+  }
+
+  root.appendChild(tabBar);
+  root.appendChild(panes);
+  activate(initial);
 }
 
 function renderOne(entry, value){

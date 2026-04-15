@@ -71,8 +71,16 @@ function route(msg){
       renderParams(schema, lastConfig, send);
       break;
     case 'armed_state':
-      setArmed(msg.armed);
+      _lastArmed = msg.armed;
+      setArmed(msg.armed, _lastLandingActive || false);
       break;
+    case 'landing_state': {
+      const ls = document.getElementById('landing-state');
+      if (ls) ls.textContent = msg.state;
+      _lastLandingActive = !!msg.active;
+      setArmed(_lastArmed ?? false, _lastLandingActive);
+      break;
+    }
     case 'recording_state':
       setRecording(msg.active, msg.filename);
       break;
@@ -100,10 +108,18 @@ function route(msg){
   }
 }
 
+let _lastArmed = null;
+let _lastLandingActive = null;
 function onTelemetry(t){
   setChip('chip-unity', t.connected_unity ? '● Unity' : '● Unity', t.connected_unity ? 'ok' : '');
   show('chip-failsafe', t.failsafe);
   show('chip-rec', t.recording);
+  const landingActive = !!(t.landing && t.landing.active);
+  if (t.armed !== _lastArmed || landingActive !== _lastLandingActive) {
+    _lastArmed = t.armed;
+    _lastLandingActive = landingActive;
+    setArmed(t.armed, landingActive);
+  }
 
   updateAttitude(t.euler);
   updateMotors(t.motors, lastConfig);
@@ -114,13 +130,45 @@ function onTelemetry(t){
 }
 
 function setReadout(t){
-  document.getElementById('ro-roll').textContent  = t.euler[0].toFixed(1);
-  document.getElementById('ro-pitch').textContent = t.euler[1].toFixed(1);
-  document.getElementById('ro-yaw').textContent   = t.euler[2].toFixed(1);
-  document.getElementById('ro-tilt').textContent  = t.tilt.toFixed(1);
+  const r = t.euler[0].toFixed(1);
+  const p = t.euler[1].toFixed(1);
+  const y = t.euler[2].toFixed(1);
+  const ti = t.tilt.toFixed(1);
+  document.getElementById('ro-roll').textContent  = r;
+  document.getElementById('ro-pitch').textContent = p;
+  document.getElementById('ro-yaw').textContent   = y;
+  document.getElementById('ro-tilt').textContent  = ti;
+  document.getElementById('hd-roll').textContent  = r;
+  document.getElementById('hd-pitch').textContent = p;
+  document.getElementById('hd-yaw').textContent   = y;
+  document.getElementById('hd-tilt').textContent  = ti;
+  const thrPct = Math.round((t.pilot?.throttle ?? 0) * 100);
+  document.getElementById('hd-thr').textContent = thrPct;
+  const sonars = t.sonars || {};
+  for (const dir of ['down','front','back','left','right']) {
+    const s = sonars[dir] || {distance:-1, valid:false, status:'init'};
+    const valEl = document.getElementById('sn-' + dir);
+    const stEl  = document.getElementById('ss-' + dir);
+    if (valEl && stEl) {
+      valEl.textContent = s.valid ? `${s.distance.toFixed(2)} m` : '—';
+      stEl.textContent = s.status;
+      stEl.className = s.valid ? 'ok' : 'warn';
+      valEl.parentElement.classList.toggle('invalid', !s.valid);
+    }
+    const hdEl = document.getElementById('hd-' + dir);
+    if (hdEl) {
+      hdEl.textContent = s.valid ? s.distance.toFixed(2) : '—';
+      hdEl.parentElement.classList.toggle('invalid', !s.valid);
+    }
+  }
   const a = t.accel;
   const mag = Math.hypot(a[0], a[1], a[2]);
   document.getElementById('ro-accel').textContent = mag.toFixed(2);
+  if (t.landing) {
+    const ls = document.getElementById('landing-state');
+    if (ls) ls.textContent = t.landing.state;
+    show('chip-landing', !!t.landing.active);
+  }
 }
 
 function setChip(id, text, cls){

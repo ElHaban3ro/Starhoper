@@ -5,7 +5,10 @@ export function bindControls(send){
   sendFn = send;
   document.getElementById('btn-arm').addEventListener('click', () => send({type:'arm'}));
   document.getElementById('btn-stop').addEventListener('click', () => send({type:'emergency_stop'}));
+  document.getElementById('btn-disarm').addEventListener('click', () => send({type:'disarm'}));
   document.getElementById('btn-reset-i').addEventListener('click', () => send({type:'reset_integral'}));
+  document.getElementById('btn-land').addEventListener('click', () => send({type:'start_landing'}));
+  document.getElementById('btn-cancel-land').addEventListener('click', () => send({type:'cancel_landing'}));
   document.getElementById('btn-rec').addEventListener('click', () => {
     if(recording) send({type:'stop_recording'});
     else          send({type:'start_recording', filename: `session-${Date.now()}`});
@@ -19,19 +22,20 @@ export function bindControls(send){
   });
 }
 
-export function setArmed(armed){
+export function setArmed(armed, landingActive = false){
   const arm = document.getElementById('btn-arm');
   const stop = document.getElementById('btn-stop');
+  const disarm = document.getElementById('btn-disarm');
   const chip = document.getElementById('chip-armed');
+  // ARM stays available during landing so the pilot can always abort + retake.
+  arm.disabled = armed && !landingActive;
+  stop.disabled = !armed;
+  if (disarm) disarm.disabled = !armed;
   if(armed){
-    arm.disabled = true;
-    stop.disabled = false;
-    chip.textContent = '● Armed';
+    chip.textContent = landingActive ? '● Armed (landing)' : '● Armed';
     chip.classList.remove('err');
     chip.classList.add('ok');
   } else {
-    arm.disabled = false;
-    stop.disabled = true;
     chip.textContent = '● Disarmed';
     chip.classList.remove('ok');
     chip.classList.add('err');
