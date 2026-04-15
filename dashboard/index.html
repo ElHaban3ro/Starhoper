@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StarHoper Mission Control</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="logo">▲</span>
+    <span>StarHoper <b>Mission Control</b></span>
+  </div>
+  <div class="status-row">
+    <span id="chip-dash" class="chip">● Dashboard</span>
+    <span id="chip-unity" class="chip">● Unity</span>
+    <span id="chip-armed" class="chip ok">● Armed</span>
+    <span id="chip-failsafe" class="chip hidden">⚠ FAILSAFE</span>
+    <span id="chip-rec" class="chip hidden">⏺ REC</span>
+  </div>
+</header>
+
+<main class="grid">
+
+  <section class="card attitude">
+    <h2>Attitude</h2>
+    <div id="attitude-canvas"></div>
+    <div class="readout" id="attitude-readout">
+      <span>Roll: <b id="ro-roll">0</b>°</span>
+      <span>Pitch: <b id="ro-pitch">0</b>°</span>
+      <span>Yaw: <b id="ro-yaw">0</b>°</span>
+      <span>Tilt: <b id="ro-tilt">0</b>°</span>
+    </div>
+  </section>
+
+  <section class="card velocity">
+    <h2>Velocity (top-down)</h2>
+    <canvas id="velocity-canvas" width="260" height="260"></canvas>
+    <div class="readout" id="velocity-readout">
+      <span>|a|: <b id="ro-accel">0</b> m/s²</span>
+    </div>
+  </section>
+
+  <section class="card motors">
+    <h2>Motors</h2>
+    <div class="motor-grid">
+      <div class="motor" data-motor="m1"><span>m1 FL</span><div class="bar"><div class="fill"></div></div><span class="val">0</span></div>
+      <div class="motor" data-motor="m2"><span>m2 FR</span><div class="bar"><div class="fill"></div></div><span class="val">0</span></div>
+      <div class="motor" data-motor="m3"><span>m3 RR</span><div class="bar"><div class="fill"></div></div><span class="val">0</span></div>
+      <div class="motor" data-motor="m4"><span>m4 RL</span><div class="bar"><div class="fill"></div></div><span class="val">0</span></div>
+    </div>
+
+    <h3>Throttle</h3>
+    <div class="throttle">
+      <div class="throttle-bar">
+        <div id="throttle-fill" class="throttle-fill"></div>
+        <div class="throttle-mid"></div>
+      </div>
+      <span id="throttle-val">0%</span>
+    </div>
+
+    <h3>Pilot controls</h3>
+    <div class="pilot-pad">
+      <div class="pad pad-throttle">
+        <button class="pkey" data-axis="throttle" data-dir="1"  data-key="up">↑ Climb</button>
+        <button class="pkey" data-axis="throttle" data-dir="-1" data-key="down">↓ Descend</button>
+      </div>
+      <div class="pad pad-move">
+        <button class="pkey" data-axis="pitch" data-dir="1"  data-key="w">W</button>
+        <div class="row">
+          <button class="pkey" data-axis="roll"  data-dir="-1" data-key="a">A</button>
+          <button class="pkey" data-axis="pitch" data-dir="-1" data-key="s">S</button>
+          <button class="pkey" data-axis="roll"  data-dir="1"  data-key="d">D</button>
+        </div>
+      </div>
+      <div class="pad pad-yaw">
+        <button class="pkey" data-axis="yaw" data-dir="-1" data-key="q">⟲ Q</button>
+        <button class="pkey" data-axis="yaw" data-dir="1"  data-key="e">⟳ E</button>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:6px">
+      Click and hold buttons, or use keyboard (WASD, QE, ↑↓) with the dashboard focused.
+    </div>
+  </section>
+
+  <section class="card charts">
+    <h2>Attitude time-series</h2>
+    <canvas id="chart-attitude" width="640" height="180"></canvas>
+    <h2>Gyro rates</h2>
+    <canvas id="chart-gyro" width="640" height="150"></canvas>
+    <h2>PID split (pitch axis)</h2>
+    <canvas id="chart-pid" width="640" height="150"></canvas>
+  </section>
+
+  <section class="card params">
+    <h2>Parameters</h2>
+    <div id="params-body"></div>
+  </section>
+
+  <section class="card profiles">
+    <h2>Profiles</h2>
+    <div class="row">
+      <label>Profile:
+        <select id="profile-select"></select>
+      </label>
+      <span id="profile-tag" class="readonly-tag"></span>
+    </div>
+    <div class="row">
+      <button id="btn-save-profile">💾 Save</button>
+      <button id="btn-reload-profile">↺ Reload</button>
+      <button id="btn-new-profile" class="primary">＋ New</button>
+      <button id="btn-delete-profile" class="danger">🗑 Delete</button>
+    </div>
+    <div class="muted">
+      <b>Selecting a profile auto-loads it</b> into the live controller.
+      Sliders edit the live config only; press <b>Save</b> to write the current values
+      back to the selected profile. <b>Reload</b> restores the profile from disk.
+      Built-in profiles (<code>default</code>, <code>quad</code>, <code>rocket</code>, <code>agile</code>)
+      are readonly — clone them via <b>New</b> to make edits.
+    </div>
+  </section>
+
+  <section class="card controls">
+    <h2>Controls</h2>
+    <div class="row">
+      <button id="btn-arm" class="primary">ARM</button>
+      <button id="btn-stop" class="danger">EMERGENCY STOP</button>
+      <button id="btn-reset-i">RESET INTEGRAL</button>
+    </div>
+    <div class="row">
+      <button id="btn-rec" class="rec">● REC</button>
+      <span id="rec-file" class="muted"></span>
+    </div>
+    <h3>Step test</h3>
+    <div class="row">
+      <label>Axis:
+        <select id="step-axis"><option>pitch</option><option>roll</option></select>
+      </label>
+      <label>Amp (°): <input id="step-amp" type="number" value="15" step="1"></label>
+      <label>Dur (s): <input id="step-dur" type="number" value="3" step="0.5"></label>
+      <button id="btn-step">Run</button>
+    </div>
+    <div id="step-result" class="muted"></div>
+  </section>
+
+  <section class="card alarms">
+    <h2>Alarms</h2>
+    <div id="alarm-rules"></div>
+    <h3>Active</h3>
+    <div id="alarm-active" class="muted">(none)</div>
+  </section>
+
+  <section class="card logs">
+    <h2>Console log</h2>
+    <div id="log-body"></div>
+  </section>
+
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,116 +1,66 @@
-from pynput import keyboard
-from modules import config as cfg
+"""Pilot input state.
+
+Used to listen to the OS keyboard via pynput. Now the dashboard UI is the
+only input source — it sends `pilot_input` WebSocket commands and this
+module just stores the resulting state. All properties are used downstream
+by the stabilization mixer the same way as before.
+"""
+
+from __future__ import annotations
+
+from modules.config_runtime import current as cfg
+
+
+def _clamp(v: float) -> float:
+    if v < -1.0: return -1.0
+    if v >  1.0: return  1.0
+    return float(v)
 
 
 class PilotInput:
-    """Global keyboard listener acting as an RC transmitter.
-
-    Keys (held down = active):
-      Up      -> throttle up   (climb)
-      Down    -> throttle down (descend)
-      W       -> pitch nose down (fly forward)
-      S       -> pitch nose up   (fly backward)
-      D       -> roll right     (fly right)
-      A       -> roll left      (fly left)
-      E       -> yaw right      (rotate clockwise from above)
-      Q       -> yaw left       (rotate counter-clockwise from above)
-
-    Outputs:
-      throttle       in [-1, 1]  (0 = hover)
-      pitch_setpoint in degrees  (target tilt the controller should aim for)
-      roll_setpoint  in degrees  (target tilt the controller should aim for)
-      yaw_input      in [-1, 1]  (sign of yaw torque to apply; 0 = no rotation)
-
-    macOS note: requires Accessibility permission for the terminal/IDE
-    running Python. Grant via System Settings -> Privacy & Security ->
-    Accessibility.
-    """
-
     def __init__(self):
-        self._throttle_up = False
-        self._throttle_down = False
-        self._fwd = False
-        self._back = False
-        self._right = False
-        self._left = False
-        self._yaw_right = False
-        self._yaw_left = False
-        self._listener = keyboard.Listener(
-            on_press=self._on_press,
-            on_release=self._on_release,
-            suppress=False,
-        )
+        self._throttle = 0.0  # [-1, 1]
+        self._pitch = 0.0     # [-1, 1]  (+1 = W = forward)
+        self._roll = 0.0      # [-1, 1]  (+1 = D = right)
+        self._yaw = 0.0       # [-1, 1]  (+1 = E = right)
 
-    def start(self):
-        self._listener.start()
+    def set_state(self, throttle: float = 0.0, pitch: float = 0.0,
+                  roll: float = 0.0, yaw: float = 0.0):
+        self._throttle = _clamp(throttle)
+        self._pitch = _clamp(pitch)
+        self._roll = _clamp(roll)
+        self._yaw = _clamp(yaw)
 
-    def stop(self):
-        self._listener.stop()
+    def reset(self):
+        self._throttle = self._pitch = self._roll = self._yaw = 0.0
+
+    # -------- downstream consumers (same API as before) --------
 
     @property
     def throttle(self) -> float:
-        return (1.0 if self._throttle_up else 0.0) - (1.0 if self._throttle_down else 0.0)
+        return self._throttle
 
     @property
     def pitch_setpoint(self) -> float:
-        raw = (cfg.PITCH_MAX_DEG if self._fwd else 0.0) \
-            - (cfg.PITCH_MAX_DEG if self._back else 0.0)
-        return raw * cfg.PILOT_PITCH_SIGN
+        return self._pitch * cfg.PITCH_MAX_DEG * cfg.PILOT_PITCH_SIGN
 
     @property
     def roll_setpoint(self) -> float:
-        raw = (cfg.ROLL_MAX_DEG if self._right else 0.0) \
-            - (cfg.ROLL_MAX_DEG if self._left else 0.0)
-        return raw * cfg.PILOT_ROLL_SIGN
+        return self._roll * cfg.ROLL_MAX_DEG * cfg.PILOT_ROLL_SIGN
 
     @property
     def yaw_input(self) -> float:
-        return (1.0 if self._yaw_right else 0.0) - (1.0 if self._yaw_left else 0.0)
+        return self._yaw
 
-    def _char(self, key) -> str | None:
-        try:
-            return key.char
-        except AttributeError:
-            return None
-
-    def _on_press(self, key):
-        c = self._char(key)
-        if c is not None:
-            c = c.lower()
-        if key == keyboard.Key.up:
-            self._throttle_up = True
-        elif key == keyboard.Key.down:
-            self._throttle_down = True
-        elif c == 'w':
-            self._fwd = True
-        elif c == 's':
-            self._back = True
-        elif c == 'd':
-            self._right = True
-        elif c == 'a':
-            self._left = True
-        elif c == 'e':
-            self._yaw_right = True
-        elif c == 'q':
-            self._yaw_left = True
-
-    def _on_release(self, key):
-        c = self._char(key)
-        if c is not None:
-            c = c.lower()
-        if key == keyboard.Key.up:
-            self._throttle_up = False
-        elif key == keyboard.Key.down:
-            self._throttle_down = False
-        elif c == 'w':
-            self._fwd = False
-        elif c == 's':
-            self._back = False
-        elif c == 'd':
-            self._right = False
-        elif c == 'a':
-            self._left = False
-        elif c == 'e':
-            self._yaw_right = False
-        elif c == 'q':
-            self._yaw_left = False
+    def active_keys(self) -> list[str]:
+        """Symbolic names of currently-active inputs (for UI highlighting)."""
+        out = []
+        if self._throttle > 0: out.append('up')
+        if self._throttle < 0: out.append('down')
+        if self._pitch > 0: out.append('w')
+        if self._pitch < 0: out.append('s')
+        if self._roll > 0: out.append('d')
+        if self._roll < 0: out.append('a')
+        if self._yaw > 0: out.append('e')
+        if self._yaw < 0: out.append('q')
+        return out

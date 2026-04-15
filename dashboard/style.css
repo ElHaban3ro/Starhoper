@@ -1,0 +1,132 @@
+:root{
+  --bg:#0a0e14;
+  --panel:#141924;
+  --panel-2:#1a2030;
+  --border:#222a3a;
+  --text:#d6dde8;
+  --muted:#7b8495;
+  --accent:#3dd6d0;
+  --accent-2:#7a7cff;
+  --warn:#ffb454;
+  --danger:#ff5871;
+  --ok:#61d095;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+h2{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h3{margin:14px 0 6px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+button{background:var(--panel-2);color:var(--text);border:1px solid var(--border);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500}
+button:hover{background:#222a3d}
+button.primary{background:var(--accent);color:#001f1e;border-color:transparent;font-weight:600}
+button.primary:hover{filter:brightness(1.1)}
+button.danger{background:var(--danger);color:#1b0004;border-color:transparent;font-weight:700}
+button.danger:hover{filter:brightness(1.1)}
+button.rec{background:#3a1a23;color:var(--danger);border-color:#5a2030}
+button.rec.active{background:var(--danger);color:#fff;animation:pulse 1s ease-in-out infinite}
+button:disabled{opacity:.4;cursor:not-allowed}
+select,input[type=number],input[type=text]{background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:13px}
+input[type=number]{width:80px}
+label{display:inline-flex;gap:6px;align-items:center;color:var(--muted);font-size:12px}
+.muted{color:var(--muted);font-size:12px}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:10px;font-size:16px}
+.brand .logo{color:var(--accent);font-size:22px}
+.status-row{display:flex;gap:8px}
+.chip{padding:5px 10px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted);background:var(--panel-2)}
+.chip.ok{color:var(--ok);border-color:#2a4a3a}
+.chip.warn{color:var(--warn);border-color:#4a3a1a}
+.chip.err{color:var(--danger);border-color:#4a1a25}
+.chip.live{animation:pulse 1s ease-in-out infinite}
+.chip.hidden{display:none}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;padding:12px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px}
+.card.attitude{grid-column:span 4}
+.card.velocity{grid-column:span 3}
+.card.motors{grid-column:span 5}
+.card.charts{grid-column:span 8}
+.card.params{grid-column:span 4;max-height:520px;overflow-y:auto}
+.card.profiles{grid-column:span 6}
+.card.controls{grid-column:span 6}
+.card.alarms{grid-column:span 6}
+.card.logs{grid-column:span 6}
+
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.row:last-child{margin-bottom:0}
+.presets{padding-top:4px;border-top:1px dashed var(--border);margin-top:4px}
+
+/* Attitude */
+#attitude-canvas{width:100%;height:260px;background:#0b1220;border-radius:8px;border:1px solid var(--border)}
+.readout{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--muted)}
+.readout b{color:var(--text);font-variant-numeric:tabular-nums}
+
+/* Motors */
+.motor-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.motor{display:grid;grid-template-columns:60px 1fr 50px;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.motor .val{text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.motor .bar{height:10px;background:var(--panel-2);border-radius:5px;overflow:hidden;border:1px solid var(--border)}
+.motor .fill{height:100%;width:0%;background:linear-gradient(90deg,#42d089,#3dd6d0 40%,#ffb454 80%,#ff5871);transition:width .08s linear}
+.motor.sat .bar{box-shadow:0 0 0 1px var(--danger) inset}
+
+/* Throttle */
+.throttle{display:flex;align-items:center;gap:10px}
+.throttle-bar{position:relative;flex:1;height:14px;background:var(--panel-2);border-radius:7px;border:1px solid var(--border);overflow:hidden}
+.throttle-mid{position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--muted);opacity:.5}
+.throttle-fill{position:absolute;top:0;height:100%;background:var(--accent);transition:width .1s linear,left .1s linear}
+#throttle-val{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);min-width:44px;text-align:right}
+
+/* Keyboard indicators (legacy class, kept for telemetry highlighting) */
+.keys{display:flex;flex-direction:column;gap:4px;align-items:flex-start;margin-top:6px}
+.keys .row{gap:4px;margin:0}
+.keys .key{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--border);border-radius:5px;font-size:11px;font-weight:600;color:var(--muted);background:var(--panel-2)}
+.keys .key.active{background:var(--accent);color:#001f1e;border-color:var(--accent)}
+
+/* Pilot pad (interactive) */
+.pilot-pad{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;margin-top:8px;user-select:none}
+.pilot-pad .pad{display:flex;flex-direction:column;gap:4px;align-items:center}
+.pilot-pad .pad-move{justify-self:center}
+.pilot-pad .pad-move .row{display:flex;gap:4px;margin:0}
+.pilot-pad .pkey{min-width:40px;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--panel-2);color:var(--text);font-weight:600;font-size:13px;cursor:pointer;touch-action:none}
+.pilot-pad .pkey:hover{background:#222a3d}
+.pilot-pad .pkey.active{background:var(--accent);color:#001f1e;border-color:var(--accent);transform:translateY(1px)}
+
+/* Charts */
+canvas{display:block;max-width:100%}
+
+/* Params */
+.param-section{border-top:1px solid var(--border);padding-top:10px;margin-top:12px}
+.param-section:first-child{border-top:0;padding-top:0;margin-top:0}
+.param-section h3{margin:0 0 10px;color:var(--accent)}
+.param{display:grid;grid-template-columns:1fr;gap:4px;margin-bottom:12px}
+.param-label{display:flex;justify-content:space-between;font-size:12px}
+.param-label .k{color:var(--text)}
+.param-label .v{color:var(--muted);font-variant-numeric:tabular-nums}
+.param-ctrl{display:flex;gap:8px;align-items:center}
+.param-ctrl input[type=range]{flex:1}
+.param .tooltip{font-size:11px;color:var(--muted);line-height:1.3}
+.vec3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.readonly-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:999px;background:#2a2f3d;color:var(--muted);margin-left:6px}
+
+/* Velocity */
+#velocity-canvas{background:#0b1220;border-radius:8px;border:1px solid var(--border);display:block;margin:0 auto}
+
+/* Alarms */
+.alarm-rule{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-bottom:6px;padding:6px 8px;background:var(--panel-2);border-radius:6px;font-size:12px}
+.alarm-rule label{color:var(--text)}
+.alarm-rule input[type=number]{width:70px}
+.alarm-active-item{padding:6px 10px;margin-bottom:4px;background:#3a1a23;border:1px solid var(--danger);border-radius:6px;color:var(--danger);font-size:12px}
+
+/* Logs */
+#log-body{height:200px;overflow-y:auto;background:#060a11;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:"SF Mono",Menlo,monospace;font-size:11px;color:#b3b9c6}
+#log-body .line{padding:1px 0;white-space:pre-wrap;word-break:break-word}
+#log-body .line.warn{color:var(--warn)}
+#log-body .line.err{color:var(--danger)}
+
+/* Step test */
+#step-result{padding:8px;margin-top:6px;background:var(--panel-2);border-radius:6px;min-height:1.6em}
+
+@keyframes pulse{
+  0%,100%{opacity:1}
+  50%{opacity:.5}
+}

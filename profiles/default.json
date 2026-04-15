@@ -1,0 +1,48 @@
+{
+  "name": "default",
+  "readonly": true,
+  "params": {
+    "DRONE_MASS_KG": 0.25,
+    "GRAVITY": 9.81,
+    "YAW_REACTION_COEFF": 0.05,
+    "BASE_THRUST": 0.613125,
+    "MOTOR_MIN": 0.0,
+    "MOTOR_MAX": 6.0,
+    "THROTTLE_GAIN": 1,
+    "PITCH_MAX_DEG": 30.0,
+    "ROLL_MAX_DEG": 30.0,
+    "MAX_COMBINED_TILT_DEG": 45.0,
+    "PILOT_PITCH_SIGN": 1,
+    "PILOT_ROLL_SIGN": 1,
+    "YAW_RATE_MAX_DEG": 80.0,
+    "YAW_STABILITY": 0.01,
+    "YAW_OUT_LIMIT": 1,
+    "KP": [
+      0.015,
+      0.015,
+      0.0
+    ],
+    "KI": [
+      0.0005,
+      0.0005,
+      0.0
+    ],
+    "KD": [
+      0.02,
+      0.02,
+      0.0
+    ],
+    "I_LIMIT": [
+      1.0,
+      1.0,
+      0.0
+    ],
+    "OUT_LIMIT": 0.5,
+    "I_LEAK": 1.0,
+    "FAILSAFE_TILT_DEG": 60.0,
+    "SIGN_ROLL": -1,
+    "SIGN_PITCH": 1,
+    "PASSIVE": false,
+    "DEBUG": false
+  }
+}
