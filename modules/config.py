@@ -117,8 +117,10 @@ PILOT_ROLL_SIGN = +1
 # Proportional: how hard to correct against angular error.
 KP = np.array([0.015, 0.015, 0.0])
 
-# Integral: cancels persistent biases. Start at 0 for diagnosis.
-KI = np.array([0.000, 0.000, 0.0])
+# Integral: cancels persistent biases. Kept tiny for rocket — the high
+# inertia means integral wind-up is easy. Raise only if drone consistently
+# settles at a small but persistent tilt.
+KI = np.array([0.0005, 0.0005, 0.0])
 
 # Derivative: damps angular velocity. For rocket (high inertia), ratio
 # KD/KP > 1 is normal — gives strong damping against oscillation.
@@ -175,4 +177,4 @@ PASSIVE = False
 
 # If True, print euler / gyro / err / u every PID tick. Useful for sign
 # diagnosis but pollutes the console.
-DEBUG = True
+DEBUG = False
