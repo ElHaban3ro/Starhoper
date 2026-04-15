@@ -4,6 +4,7 @@ import websockets
 import json
 from maps import Coords, IMU
 from modules.stabilization import Stabilization
+from modules.pilot import PilotInput
 
 
 class WebsocketServer:
@@ -14,11 +15,13 @@ class WebsocketServer:
         self.port = port
         self.websocket = None
         self.stabilization = Stabilization()
+        self.pilot = PilotInput()
+        self.pilot.start()
 
     async def connection_handler(self, websocket: websockets.ServerConnection):
         """Handle incoming WebSocket connections."""
         self.websocket = websocket
-        self.websocket.remote_address
+        self.stabilization.reset()
         print(f'New Client Connected From {self.websocket.remote_address}.')
         async for message in websocket:
             message = json.loads(message)
@@ -28,8 +31,11 @@ class WebsocketServer:
                 angular_velocity=Coords(**message['gyro']),
                 magnetic_field=Coords(**message['magnet'])
             )
-            force = self.stabilization.update_orientation(imu_data)
-            # print(f'Force: {force}\n')
+            tilt = float(message.get('tilt', 0.0))
+            force = self.stabilization.update_orientation(
+                imu_data, self.pilot.throttle, tilt
+            )
+            print(f'Throttle: {self.pilot.throttle:+.2f}  Tilt: {tilt:5.1f}°  Force: {force}')
             await websocket.send(json.dumps(force))
 
     async def main(self):
