@@ -50,14 +50,14 @@ MOTOR_MAX = 6.0
 
 # Extra thrust per motor when throttle = ±1.0. Total extra force on the drone
 # at full throttle = 4 * THROTTLE_GAIN. Higher = punchier climb/descent.
-THROTTLE_GAIN = 2
+THROTTLE_GAIN = 1
 
 # Tilt setpoint commanded when an arrow key is held (degrees).
 # Higher = faster horizontal acceleration but harder for PID to recover.
 # At 15° the drone loses ~3.4% of vertical thrust to horizontal; at 30°,
 # ~13%. Above ~25° you usually need extra throttle to maintain altitude.
-PITCH_MAX_DEG = 80.0   # forward / backward (W / S)
-ROLL_MAX_DEG = 80.0    # left / right       (A / D)
+PITCH_MAX_DEG = 30.0   # forward / backward (W / S)
+ROLL_MAX_DEG = 30.0    # left / right       (A / D)
 
 # Yaw is generated the realistic way: motor-thrust differential modulated
 # into the mixer's yaw term, then Unity applies each motor's drag-reaction
@@ -111,16 +111,18 @@ PILOT_ROLL_SIGN = +1
 # longer than the pitch arm (~0.38 m), giving more torque authority per unit
 # of correction. If you change ARM_X / ARM_Z in Unity, rebalance these.
 
+# ROCKET TUNING — step 1: isolate oscillation with KI=0, KD high vs KP.
+# Once stable in PD, gradually raise KP, then re-enable KI.
+#
 # Proportional: how hard to correct against angular error.
-KP = np.array([0.008, 0.020, 0.0])
+KP = np.array([0.015, 0.015, 0.0])
 
-# Integral: cancels persistent biases (CoM offset, drag asymmetry, motor
-# imbalance). Small values -- too high causes wind-up oscillation.
-KI = np.array([0.001, 0.002, 0.0])
+# Integral: cancels persistent biases. Start at 0 for diagnosis.
+KI = np.array([0.000, 0.000, 0.0])
 
-# Derivative: damps angular velocity. Without it the drone overshoots and
-# oscillates. Too high amplifies gyro noise -> high-freq chatter.
-KD = np.array([0.004, 0.010, 0.0])
+# Derivative: damps angular velocity. For rocket (high inertia), ratio
+# KD/KP > 1 is normal — gives strong damping against oscillation.
+KD = np.array([0.020, 0.020, 0.0])
 
 
 # ============================================================================
@@ -173,4 +175,4 @@ PASSIVE = False
 
 # If True, print euler / gyro / err / u every PID tick. Useful for sign
 # diagnosis but pollutes the console.
-DEBUG = False
+DEBUG = True
