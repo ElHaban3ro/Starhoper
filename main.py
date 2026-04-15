@@ -33,9 +33,15 @@ class WebsocketServer:
             )
             tilt = float(message.get('tilt', 0.0))
             force = self.stabilization.update_orientation(
-                imu_data, self.pilot.throttle, tilt
+                imu_data, self.pilot.throttle, tilt,
+                self.pilot.pitch_setpoint, self.pilot.roll_setpoint,
+                self.pilot.yaw_input,
             )
-            print(f'Throttle: {self.pilot.throttle:+.2f}  Tilt: {tilt:5.1f}°  Force: {force}')
+            print(f'Thr:{self.pilot.throttle:+.2f}  '
+                  f'Pitch SP:{self.pilot.pitch_setpoint:+5.1f}°  '
+                  f'Roll SP:{self.pilot.roll_setpoint:+5.1f}°  '
+                  f'Yaw:{self.pilot.yaw_input:+.0f}  '
+                  f'Tilt:{tilt:5.1f}°')
             await websocket.send(json.dumps(force))
 
     async def main(self):
