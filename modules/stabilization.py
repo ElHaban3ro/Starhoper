@@ -76,6 +76,14 @@ class Stabilization:
 
         base = cfg.BASE_THRUST + cfg.THROTTLE_GAIN * max(-1.0, min(1.0, throttle))
 
+        # Tilt-compensated altitude hold. Vertical thrust = T*cos(tilt), so
+        # scale base by 1/cos(tilt) to hold altitude during WASD maneuvers.
+        # Capped by TILT_COMP_MAX to keep motors inside saturation.
+        if cfg.TILT_COMP_ENABLED:
+            cos_tilt = float(np.cos(np.radians(tilt)))
+            boost = min(cfg.TILT_COMP_MAX, 1.0 / max(cos_tilt, 1e-3))
+            base *= boost
+
         # Closed-loop yaw rate controller.
         target_yaw_rate = yaw_input * cfg.YAW_RATE_MAX_DEG
         current_yaw_rate = self.imu_data.angular_velocity.vector[2]
@@ -90,11 +98,19 @@ class Stabilization:
             self.last_output = out
             return out
 
-        # Soft failsafe: preserve PID damping but drop throttle boost.
+        # Soft failsafe: preserve PID damping + tilt-compensated hover, but
+        # drop any pilot-commanded throttle boost. At extreme tilts the tilt
+        # comp boost saturates naturally (TILT_COMP_MAX), so the drone still
+        # falls if truly tumbling — but a legitimate aggressive maneuver at
+        # 65-70° keeps altitude instead of dropping like a brick.
         self.last_failsafe = tilt > cfg.FAILSAFE_TILT_DEG
         if self.last_failsafe:
             self.integral[:] = 0.0
             base = cfg.BASE_THRUST
+            if cfg.TILT_COMP_ENABLED:
+                cos_tilt = float(np.cos(np.radians(tilt)))
+                boost = min(cfg.TILT_COMP_MAX, 1.0 / max(cos_tilt, 1e-3))
+                base *= boost
 
         correction = self._pid(dt)
         correction[2] = yaw_cmd  # pilot yaw overrides (PID yaw = 0)

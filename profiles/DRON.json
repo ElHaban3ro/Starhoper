@@ -1,5 +1,5 @@
 {
-  "name": "NewDefault",
+  "name": "DRON",
   "readonly": false,
   "params": {
     "DRONE_MASS_KG": 0.25,
@@ -9,17 +9,23 @@
     "MOTOR_MIN": 0,
     "MOTOR_MAX": 6,
     "THROTTLE_GAIN": 1,
-    "PITCH_MAX_DEG": 50,
-    "ROLL_MAX_DEG": 50,
-    "MAX_COMBINED_TILT_DEG": 45,
+    "TILT_COMP_ENABLED": true,
+    "TILT_COMP_MAX": 3.0,
+    "BRAKE_ENABLED": true,
+    "BRAKE_GAIN": 5,
+    "BRAKE_TILT_MAX": 25,
+    "BRAKE_MIN_SPEED": 0.3,
+    "PITCH_MAX_DEG": 60,
+    "ROLL_MAX_DEG": 60,
+    "MAX_COMBINED_TILT_DEG": 58,
     "PILOT_PITCH_SIGN": 1,
     "PILOT_ROLL_SIGN": 1,
     "YAW_RATE_MAX_DEG": 80,
     "YAW_STABILITY": 0.01,
     "YAW_OUT_LIMIT": 1,
     "KP": [
-      0.015,
-      0.015,
+      0.018,
+      0.018,
       0
     ],
     "KI": [
@@ -28,8 +34,8 @@
       0
     ],
     "KD": [
-      0.02,
-      0.02,
+      0.007,
+      0.007,
       0
     ],
     "I_LIMIT": [
@@ -37,12 +43,12 @@
       1,
       0
     ],
-    "OUT_LIMIT": 0.5,
+    "OUT_LIMIT": 0.55,
     "I_LEAK": 1,
-    "FAILSAFE_TILT_DEG": 60,
+    "FAILSAFE_TILT_DEG": 65,
     "SIGN_ROLL": -1,
     "SIGN_PITCH": 1,
-    "LANDING_APPROACH_ALT_M": 1,
+    "LANDING_APPROACH_ALT_M": 3,
     "LANDING_TOUCHDOWN_ALT_M": 0.17,
     "LANDING_THROTTLE": -0.15,
     "LANDING_APPROACH_TIMEOUT_S": 30,

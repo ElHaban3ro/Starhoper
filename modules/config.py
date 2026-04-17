@@ -52,6 +52,26 @@ MOTOR_MAX = 6.0
 # at full throttle = 4 * THROTTLE_GAIN. Higher = punchier climb/descent.
 THROTTLE_GAIN = 1
 
+# Tilt-compensated altitude hold. When the drone tilts at angle theta, the
+# vertical component of thrust drops by cos(theta). Multiplying the base
+# thrust by 1/cos(theta) keeps altitude steady during WASD maneuvers.
+# TILT_COMP_MAX caps the boost so extreme tilts don't blow up motor output
+# (1/cos(60°) = 2.0, 1/cos(75°) ≈ 3.86).
+TILT_COMP_ENABLED = True
+TILT_COMP_MAX = 1.5
+
+# Auto-brake / position hold. When WASD is released the pilot setpoint is
+# zero, so the drone just levels and glides forever (no drag = no stop).
+# Brake mode reads horizontal velocity from the GPS (speed+course) and
+# commands opposing tilt to actively decelerate until the drone stops.
+# BRAKE_GAIN: deg of counter-tilt per m/s of residual velocity.
+# BRAKE_TILT_MAX: clamp on the brake tilt so brake can't tumble the drone.
+# BRAKE_MIN_SPEED: below this ground speed (m/s) the brake releases.
+BRAKE_ENABLED = True
+BRAKE_GAIN = 5.0
+BRAKE_TILT_MAX = 25.0
+BRAKE_MIN_SPEED = 0.3
+
 # Tilt setpoint commanded when an arrow key is held (degrees).
 # Higher = faster horizontal acceleration but harder for PID to recover.
 # At 15° the drone loses ~3.4% of vertical thrust to horizontal; at 30°,

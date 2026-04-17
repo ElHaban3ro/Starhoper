@@ -21,25 +21,54 @@ function ScalarParam({ p, value, onChange }: {
   const min = p.min ?? 0
   const max = p.max ?? 1
   const step = p.step ?? (p.type === 'int' ? 1 : 0.01)
+
+  // Shadow string state so typing (including partials like "-" or "0.") isn't
+  // clobbered by incoming config broadcasts. editing.current gates the sync.
+  const [localStr, setLocalStr] = useState<string>(() => String(value))
+  const editing = useRef(false)
+
+  useEffect(() => {
+    if (!editing.current) setLocalStr(String(value))
+  }, [value])
+
+  const localNum = parseFloat(localStr)
+  const sliderVal = Number.isFinite(localNum) ? localNum : value
+
   return (
     <div className="flex items-center gap-2">
       <Slider
-        value={[value]}
+        value={[sliderVal]}
         min={min}
         max={max}
         step={step}
-        onValueChange={(v) => onChange(v[0] ?? 0)}
+        onValueChange={(v) => {
+          const n = v[0] ?? 0
+          editing.current = true
+          setLocalStr(String(n))
+          onChange(n)
+        }}
+        onValueCommit={() => { editing.current = false }}
         disabled={p.derived}
         className="flex-1"
       />
       <Input
         type="number"
-        value={value}
+        value={localStr}
         min={min}
         max={max}
         step={step}
         readOnly={p.derived}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        onFocus={() => { editing.current = true }}
+        onBlur={() => {
+          editing.current = false
+          setLocalStr(String(value))
+        }}
+        onChange={(e) => {
+          const s = e.target.value
+          setLocalStr(s)
+          const n = parseFloat(s)
+          if (Number.isFinite(n)) onChange(n)
+        }}
         className="w-24 h-8 text-xs font-mono"
       />
     </div>
@@ -47,19 +76,56 @@ function ScalarParam({ p, value, onChange }: {
 }
 
 function Vec3Param({ p, value, onChange }: { p: ParamSchema; value: [number, number, number]; onChange: (v: [number, number, number]) => void }) {
+  const [localStrs, setLocalStrs] = useState<[string, string, string]>(
+    () => [String(value[0]), String(value[1]), String(value[2])]
+  )
+  const editing = useRef<[boolean, boolean, boolean]>([false, false, false])
+
+  useEffect(() => {
+    setLocalStrs((prev) => {
+      let changed = false
+      const next = [...prev] as [string, string, string]
+      for (let i = 0; i < 3; i++) {
+        if (!editing.current[i]) {
+          const s = String(value[i])
+          if (next[i] !== s) { next[i] = s; changed = true }
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [value])
+
   return (
     <div className="grid grid-cols-3 gap-1.5">
-      {(['x', 'y', 'z'] as const).map((_, i) => (
+      {([0, 1, 2] as const).map((i) => (
         <Input
           key={i}
           type="number"
-          value={value[i]}
+          value={localStrs[i]}
           step={p.step ?? 0.01}
           readOnly={p.derived}
+          onFocus={() => { editing.current[i] = true }}
+          onBlur={() => {
+            editing.current[i] = false
+            setLocalStrs((prev) => {
+              const next = [...prev] as [string, string, string]
+              next[i] = String(value[i])
+              return next
+            })
+          }}
           onChange={(e) => {
-            const next = [...value] as [number, number, number]
-            next[i] = parseFloat(e.target.value) || 0
-            onChange(next)
+            const s = e.target.value
+            setLocalStrs((prev) => {
+              const next = [...prev] as [string, string, string]
+              next[i] = s
+              return next
+            })
+            const n = parseFloat(s)
+            if (Number.isFinite(n)) {
+              const vec = [...value] as [number, number, number]
+              vec[i] = n
+              onChange(vec)
+            }
           }}
           className="h-8 text-xs font-mono"
         />

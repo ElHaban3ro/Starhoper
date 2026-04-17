@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import math
 import os
 import shutil
 import signal
@@ -24,6 +25,7 @@ from modules.recorder import Recorder
 from modules.sequencer import Sequencer
 from modules.stabilization import Stabilization
 from modules.step_tester import StepTester
+from modules.velocity_estimator import VelocityEstimator
 
 
 class Controller:
@@ -43,6 +45,9 @@ class Controller:
         self.step_tester = StepTester()
         self.landing = Landing()
         self.sequencer = Sequencer()
+        self.velocity = VelocityEstimator()
+        self._last_tick_t: float | None = None
+        self._prev_armed = False
 
         self.dashboard = DashboardServer(command_handler=self._handle_command)
 
@@ -76,12 +81,37 @@ class Controller:
                         "status": str(r.get('status', 'init')),
                     }
 
+                # Inertial velocity estimator: integrate world-frame accel
+                # between ticks. Reset on arm→disarm transition (drone on
+                # ground has v=0, clears accumulated drift).
+                now_tick = time.monotonic()
+                if self._last_tick_t is None:
+                    dt_tick = 0.02
+                else:
+                    dt_tick = max(1e-4, now_tick - self._last_tick_t)
+                self._last_tick_t = now_tick
+                if not self.stabilization.armed:
+                    self.velocity.reset()
+                else:
+                    self.velocity.update(imu_data.acceleration.vector, dt_tick)
+
                 # Step tester may override setpoints.
                 pitch_sp = self.pilot.pitch_setpoint
                 roll_sp = self.pilot.roll_setpoint
                 if self.step_tester.active:
                     pitch_sp = self.step_tester.pitch_setpoint()
                     roll_sp = self.step_tester.roll_setpoint()
+                elif (cfg.BRAKE_ENABLED
+                      and pitch_sp == 0.0 and roll_sp == 0.0
+                      and self.stabilization.armed):
+                    # Auto-brake: project estimated world velocity into body
+                    # frame and command opposing tilt to decelerate.
+                    yaw_deg = float(imu_data.euler_angles.vector[2])
+                    v_forward, v_right = self.velocity.body_frame(yaw_deg)
+                    if math.hypot(v_forward, v_right) > cfg.BRAKE_MIN_SPEED:
+                        cap = cfg.BRAKE_TILT_MAX
+                        pitch_sp = max(-cap, min(cap, -cfg.BRAKE_GAIN * v_forward))
+                        roll_sp = max(-cap, min(cap, -cfg.BRAKE_GAIN * v_right))
 
                 throttle = self.pilot.throttle
                 yaw_input = self.pilot.yaw_input
