@@ -350,6 +350,38 @@ class Controller:
             self.landing.start()
             self.dashboard.broadcast({"type": "armed_state", "armed": True})
             return {"type": "landing_state", **self.landing.snapshot()}
+        if t == "start_controlled_descent":
+            # Toggle: if a controlled-descent is already running, cancel it
+            # (pilot regains manual throttle). Same gamepad button drives
+            # both start and stop. Other active sequences are left alone
+            # to avoid clobbering a user-run multi-stage flight.
+            if self.sequencer.active:
+                idx = self.sequencer.current_idx
+                stages = self.sequencer.stages
+                stage = stages[idx] if 0 <= idx < len(stages) else None
+                if (stage and stage.get("type") == "landing"
+                        and stage.get("controlled")):
+                    self.sequencer.cancel()
+                    return {"type": "sequencer_state",
+                            **self.sequencer.snapshot()}
+                return {"type": "sequencer_state",
+                        **self.sequencer.snapshot()}
+            # Gentle-descent: throttle held at LANDING_THROTTLE, motors
+            # auto-disarm when any sonar reports touchdown. Same path as
+            # the sequencer's "landing controlled" stage type.
+            self.sequencer.load([
+                {"type": "landing", "controlled": True,
+                 "pitch_deg": 0.0, "roll_deg": 0.0},
+            ])
+            self.sequencer.loop = False
+            if not self.stabilization.armed:
+                self.stabilization.armed = True
+                self.stabilization.reset()
+                self.dashboard.broadcast(
+                    {"type": "armed_state", "armed": True}
+                )
+            self.sequencer.start()
+            return {"type": "sequencer_state", **self.sequencer.snapshot()}
         if t == "cancel_landing":
             self.landing.cancel()
             return {"type": "landing_state", **self.landing.snapshot()}

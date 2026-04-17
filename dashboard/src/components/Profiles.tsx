@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,9 @@ export function Profiles() {
   const config = useTelemetry((s) => s.config)
   const send = useWs((s) => s.send)
 
-  const [current, setCurrent] = useState<string>('')
+  const [current, setCurrent] = useState<string>(
+    () => localStorage.getItem('lastProfile') ?? ''
+  )
   const [newName, setNewName] = useState('')
   const [newOpen, setNewOpen] = useState(false)
 
@@ -23,8 +25,32 @@ export function Profiles() {
 
   const onSelect = (name: string) => {
     setCurrent(name)
+    localStorage.setItem('lastProfile', name)
     send({ type: 'apply_profile', name })
   }
+
+  // Auto-apply the last-used profile once the server's profile list arrives.
+  // Runs exactly once per mount — a ref blocks re-firing if the user later
+  // switches profile and the list is re-broadcast (profile_list message).
+  const autoAppliedRef = useRef(false)
+  useEffect(() => {
+    if (autoAppliedRef.current) return
+    if (profiles.length === 0) return
+    const saved = localStorage.getItem('lastProfile')
+    if (!saved) {
+      autoAppliedRef.current = true
+      return
+    }
+    if (!profiles.some((p) => p.name === saved)) {
+      // Stale entry (profile was deleted). Clear so we don't retry.
+      localStorage.removeItem('lastProfile')
+      autoAppliedRef.current = true
+      return
+    }
+    autoAppliedRef.current = true
+    setCurrent(saved)
+    send({ type: 'apply_profile', name: saved })
+  }, [profiles, send])
 
   const onSave = () => {
     if (!current || isReadonly) return
